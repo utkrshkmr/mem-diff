@@ -74,15 +74,15 @@ def generate(seed, n_items=3):
         t = BANK[b]
         vis, hid = cases_for(t)
         iid = f"f{k + 1}"
-        items.append({"id": iid, "prompt": f"Fix function `{t['fn']}` ({iid}). Spec: {t['spec']}", "answer": t["ref"], "fn": t["fn"], "cases": vis + hid})
+        items.append({"id": iid, "prompt": f"Fix function `{t['fn']}` ({iid}) so it meets its specification.", "answer": t["ref"], "fn": t["fn"], "cases": vis + hid})
         pieces.append({"id": f"s{len(pieces) + 1}", "text": f"[{iid}] Current buggy source of {t['fn']}:\n{t['buggy']}", "items": [(iid, 0)]})
         tests = "\n".join(f"assert {t['fn']}({', '.join(json.dumps(x) for x in a)}) == {json.dumps(e)}" for a, e in vis)
-        pieces.append({"id": f"s{len(pieces) + 1}", "text": f"[{iid}] Tests that the correct {t['fn']} must pass (JSON literals):\n{tests}", "items": [(iid, 1)]})
+        pieces.append({"id": f"s{len(pieces) + 1}", "text": f"[{iid}] Specification: {t['spec']}\nTests that the correct {t['fn']} must pass (JSON literals):\n{tests}", "items": [(iid, 1)]})
     assign_kinds(items)
     return Instance(
         task="codefix",
         seed=seed,
-        intro="Fix buggy Python functions. For each function, the buggy source and the tests may be held by different agents. A submission is the complete corrected Python source of the function; it is graded on visible and hidden tests.",
+        intro="Fix buggy Python functions. For each function, the buggy source and the specification with tests may be held by different agents. A submission is the complete corrected Python source of the function; it is graded on visible and hidden tests.",
         answer_format="the full corrected Python source of the function (def ...)",
         items=items,
         pieces=pieces,

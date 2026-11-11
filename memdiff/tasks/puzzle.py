@@ -1,3 +1,4 @@
+import ast
 import itertools
 import json
 import random
@@ -88,13 +89,20 @@ def generate(seed, n_items=3):
 def parse(ans):
     if isinstance(ans, dict):
         return ans
-    m = re.search(r"\{.*\}", str(ans), re.S)
-    if not m:
-        return None
-    try:
-        return json.loads(m.group())
-    except json.JSONDecodeError:
-        return None
+    s = str(ans)
+    m = re.search(r"\{.*\}", s, re.S)
+    if m:
+        for f in (json.loads, ast.literal_eval):
+            try:
+                d = f(m.group())
+                if isinstance(d, dict):
+                    return d
+            except (ValueError, SyntaxError):
+                pass
+    pairs = re.findall(r"\b([A-Za-z]\d+)\b(?:\s*(?:[:=]|->|is|at|in|slot))*\s*\"?(\d+)", s)
+    if pairs:
+        return {k: int(v) for k, v in pairs}
+    return None
 
 
 def score(item, answer):

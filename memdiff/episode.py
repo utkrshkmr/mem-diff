@@ -181,12 +181,14 @@ async def run_episode(spec, llms, cfg):
             live["tok"] += row["tok_in"] + row["tok_out"]
             live["calls"] += 1
     rounds_run = 0
+    idle = 0
     budget = cfg.get("context_chars", 70000)
     fail = None
     for rnd in range(R):
         if staged:
             staged.begin()
         activity = 0
+        busy = 0
         order = ids if rnd % 2 == 0 or spec["schedule"] == "simultaneous" else list(reversed(ids))
         for a in order:
             ag = agents[a]
@@ -247,6 +249,10 @@ async def run_episode(spec, llms, cfg):
                     elif name == "end_turn":
                         res = {"ok": True}
                         done = True
+                    if args is not None and name != "end_turn":
+                        busy += 1
+                    if args is None or name == "end_turn":
+                        pass
                     elif name == "submit_answer":
                         if "submit_answer" not in [t["function"]["name"] for t in ag.tools]:
                             res = {"ok": False, "error": "you cannot submit answers"}
@@ -314,7 +320,8 @@ async def run_episode(spec, llms, cfg):
                 line += f" | evidence A {ev['ev_items_avail_A']}/{len(inst.items)} links {ev['ev_links_present']}/{ev['ev_links_total']} conflicts {ev['ev_links_conflict']}"
             line += f" | A correct {sum(a_cur.values())}/{len(inst.items)} | cum {kfmt(st['cum_tok_total'])} tok {st['cum_flops'] / 1e12:.1f} TF"
             logf(2, line)
-        if fail or (rnd >= 1 and activity == 0 and not staged) or (staged and rnd >= 1 and activity == 0):
+        idle = idle + 1 if busy == 0 else 0
+        if fail or idle >= cfg.get("stop_idle_rounds", 2):
             break
     res = await asyncio.to_thread(evaluate, spec, inst, alloc, store, subs, agents, timeline, epm, score_cache)
     res.update({"rounds_run": rounds_run, "wall_s": round(time.time() - t0, 2), "failed": fail, "t_start": round(t0, 3), "trajectory": traj})
