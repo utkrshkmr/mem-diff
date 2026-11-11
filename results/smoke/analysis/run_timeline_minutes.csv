@@ -1,0 +1,2 @@
+minute,tok,processed,flops,calls,mem_ops,tok_per_s,tflops_per_s,active_episodes
+0,566752,104848,1820324841930752.0,281,457,9445.866666666667,30.338747365512535,18

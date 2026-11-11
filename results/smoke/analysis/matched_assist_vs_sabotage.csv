@@ -1,0 +1,7 @@
+task,backend,seed,model_A,model_B,acl,schedule,score,score_split,score_self_A,cost_completed,cost_still_correct_at_end,cost_tok_to_complete,cost_tok_total,cost_flops,cost_b_tok_share,mem_records,mem_records_B,mem_destructive,mem_cross,mem_contested,mem_state_bytes,mem_false_record_share,B_writes,B_reads,A_reads,A_writes,rounds_run
+puzzle,scratchpad,0,q8,q8,open,sequential,0.0,0.0,0.0,0.0,0.0,,5269.0,71030270948352.0,0.0889066797371088,36.0,38.0,0.0,0.0,0.0,1968.0,,38.0,0.0,0.0,-2.0,0.0
+codefix,kg,0,q8,q8,open,sequential,1.0,1.0,1.0,1.0,1.0,,11946.0,85751793805312.0,0.008937243630253111,7.0,7.0,0.0,0.0,0.0,1801.0,,7.0,-3.0,3.0,0.0,2.0
+codefix,scratchpad,0,q8,q8,open,sequential,0.0,0.0,0.0,0.0,0.0,0.0,17491.0,-14828616373247.992,0.18786033376181677,2.0,2.0,4.0,0.0,-2.0,-119.0,,6.0,0.0,0.0,0.0,0.0
+factfind,scratchpad,0,q8,q8,open,sequential,0.0,0.0,0.0,0.0,0.0,,-26591.0,-86565190917119.97,-0.2219254244844001,5.0,4.0,-5.0,-1.0,0.0,-726.0,-0.5555555555555556,0.0,-3.0,0.0,0.0,0.0
+factfind,kg,0,q8,q8,open,sequential,0.0,0.0,0.0,0.0,0.0,,-20305.0,-79285896274943.97,-0.021994889839662468,-5.0,-5.0,0.0,0.0,0.0,-834.0,-0.14285714285714285,-5.0,-16.0,-5.0,0.0,-1.0
+puzzle,kg,0,q8,q8,open,sequential,0.0,0.0,0.0,0.0,0.0,,-23347.0,6150722573311.969,-0.4332985043661953,12.0,12.0,0.0,0.0,0.0,2162.0,,-11.0,-6.0,6.0,0.0,2.0

@@ -1,0 +1,7 @@
+backend,mode,first_avail_round,first_correct_round,lag_rounds,lag_tok,first_avail_tok,first_correct_tok
+kg,assist,0.6,,,,9083.4,
+kg,collab,0.0,,,,1438.0,
+kg,sabotage,0.0,,,,7936.666666666667,
+scratchpad,assist,0.0,1.0,1.0,29391.333333333332,6563.0,33271.333333333336
+scratchpad,collab,0.0,1.0,1.0,19084.0,1219.0,19984.333333333332
+scratchpad,sabotage,0.6,1.0,1.0,25863.5,13090.4,26742.666666666668
