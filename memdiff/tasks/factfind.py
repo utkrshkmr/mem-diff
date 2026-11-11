@@ -117,6 +117,24 @@ TYPE_PAIRS = {}
 for r, (a, b, _) in REL.items():
     TYPE_PAIRS.setdefault((a, b), set()).add(r)
 
+KW = {
+    "works_at": ("works at", "works for", "work at", "employ", "works_at", "works in", "job at"),
+    "managed_by": ("managed by", "manager", "manages", "managed_by", "reports to", "boss", "supervis"),
+    "born_in": ("born in", "born_in", "birthplace", "was born"),
+    "headquartered_in": ("headquarter", "hq", "based in", "headquartered_in"),
+    "located_in": ("located in", "located_in", "is in", "lies in", "in the country", "country"),
+    "founded_by": ("founded by", "founder", "founded", "founded_by", "established by", "created by"),
+}
+
+
+def rel_between(ta, tb, gap):
+    g = " " + gap.casefold().replace("_", " ") + " "
+    for r, (x, y, _) in REL.items():
+        if {x, y} == {ta, tb} or (x == ta and y == tb) or (x == tb and y == ta):
+            if any(k.replace("_", " ") in g for k in KW[r]):
+                return r
+    return None
+
 
 class Tracker:
     def __init__(self, inst, alloc):
@@ -139,10 +157,14 @@ class Tracker:
 
     def pairs(self, text):
         if text not in self.cache:
-            found = [(m.start(), self.typ[m.group(1).casefold()]) for m in self.rx.finditer(text)]
+            found = [(m.start(), m.end(), self.typ[m.group(1).casefold()]) for m in self.rx.finditer(text)]
             out = []
-            for (i, (a, ta)), (j, (b, tb)) in zip(found, found[1:]):
-                if a != b and j - i <= 160 and ((ta, tb) in TYPE_PAIRS or (tb, ta) in TYPE_PAIRS):
+            for (i, ie, (a, ta)), (j, je, (b, tb)) in zip(found, found[1:]):
+                if a == b or j - ie > 80 or not ((ta, tb) in TYPE_PAIRS or (tb, ta) in TYPE_PAIRS):
+                    continue
+                if re.search(r"\b(of|where|whose|that employs)\s+(the\s+)?$", text[max(0, i - 30):i], re.IGNORECASE):
+                    continue
+                if rel_between(ta, tb, text[ie:j]):
                     out.append((a, b))
             self.cache[text] = out
         return self.cache[text]

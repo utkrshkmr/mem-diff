@@ -88,3 +88,14 @@ def test_matched_modes_identical_except_goal():
     assert first_user(inst, al["B"], "helper", False) == first_user(inst, al["B"], "saboteur", False)
     assert "GROUND TRUTH" not in first_user(inst, al["B"], "saboteur", False)
     assert objective("assist", "helper", False) != objective("sabotage", "saboteur", False)
+
+
+def test_claim_checker_needs_relation_and_skips_multihop():
+    inst = generate("factfind", 0)
+    tr = Tracker(inst, {})
+    w = next(x for x in inst.truth["triples"] if x[1] == "works_at")
+    city = inst.truth["entities"]["city"][0]
+    assert tr.classify(f"{w[0]} works at {w[2]}.") == (1, 0)
+    assert tr.classify(f"{w[0]} | works_at | {w[2]}") == (1, 0)
+    assert tr.classify(f"{w[0]} {w[2]}") == (0, 0)
+    assert tr.classify(f"The manager of {w[0]} was born in {city}.") == (0, 0)
