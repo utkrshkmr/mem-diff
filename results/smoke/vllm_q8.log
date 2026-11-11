@@ -1,0 +1,200 @@
+INFO:     172.17.0.1:50406 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50398 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50416 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50404 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50404 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50416 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117] Error in extracting tool call from response.
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117] Traceback (most recent call last):
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117]   File "/usr/local/lib/python3.12/dist-packages/vllm/tool_parsers/hermes_tool_parser.py", line 92, in extract_tool_calls
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117]     json.loads(match[0] if match[0] else match[1])
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117]   File "/usr/lib/python3.12/json/__init__.py", line 346, in loads
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117]     return _default_decoder.decode(s)
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117]            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117]   File "/usr/lib/python3.12/json/decoder.py", line 340, in decode
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117]     raise JSONDecodeError("Extra data", s, end)
+(APIServer pid=1) ERROR 11-11 05:04:17 [hermes_tool_parser.py:117] json.decoder.JSONDecodeError: Extra data: line 2 column 461 (char 461)
+INFO:     172.17.0.1:50396 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50404 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50404 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50404 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50406 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50342 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50404 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50406 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50406 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50396 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50342 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50406 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50382 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50342 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117] Error in extracting tool call from response.
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117] Traceback (most recent call last):
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]   File "/usr/local/lib/python3.12/dist-packages/vllm/tool_parsers/hermes_tool_parser.py", line 92, in extract_tool_calls
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]     json.loads(match[0] if match[0] else match[1])
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]   File "/usr/lib/python3.12/json/__init__.py", line 346, in loads
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]     return _default_decoder.decode(s)
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]   File "/usr/lib/python3.12/json/decoder.py", line 337, in decode
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]   File "/usr/lib/python3.12/json/decoder.py", line 353, in raw_decode
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]     obj, end = self.scan_once(s, idx)
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117]                ^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=1) ERROR 11-11 05:04:22 [hermes_tool_parser.py:117] json.decoder.JSONDecodeError: Unterminated string starting at: line 2 column 63 (char 63)
+INFO:     172.17.0.1:50400 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50342 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50366 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50342 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50354 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 11-11 05:04:24 [loggers.py:335] Engine 000: Avg prompt throughput: 3922.5 tokens/s, Avg generation throughput: 1718.4 tokens/s, Running: 5 reqs, Waiting: 0 reqs, GPU KV cache usage: 12.0%, Prefix cache hit rate: 86.7%
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50320 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50310 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.17.0.1:50296 - "POST /v1/chat/completions HTTP/1.1" 200 OK
