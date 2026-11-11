@@ -125,6 +125,40 @@ def kfmt(v):
     return f"{v / 1e6:.2f}M" if v >= 1e6 else f"{v / 1e3:.1f}k" if v >= 1e3 else f"{v:.0f}"
 
 
+def summarize_evidence(tracker, final_ok, a_first, end):
+    ev = tracker.summary(final_ok, a_first, end)
+    causes = {}
+    for it in ev["items"]:
+        causes[it["cause"]] = causes.get(it["cause"], 0) + 1
+    lag = [it["lag_tok"] for it in ev["items"] if it["lag_tok"] is not None]
+    summ = {
+        "causes": causes,
+        "items_avail_end": sum(it["avail_at_end"] for it in ev["items"]),
+        "links_supplied_by_B": sum(1 for l in ev["links"] if l["first_supplier"] == "B"),
+        "links_removed": sum(l["removed"] for l in ev["links"]),
+        "links_conflict_end": sum(l["conflict_end"] for l in ev["links"]),
+        "links_ever_conflict": sum(l["ever_conflict"] for l in ev["links"]),
+        "conflict_tok_sum": sum(l["conflict_tok"] for l in ev["links"]),
+        "conflict_rounds_sum": sum(l["conflict_rounds"] for l in ev["links"]),
+        "mean_lag_tok": sum(lag) / len(lag) if lag else None,
+    }
+    return ev["links"], ev["items"], summ
+
+
+def claim_stats(mod, inst, recs):
+    tr = mod.Tracker(inst, {})
+    per = {}
+    trr = frr = 0
+    for au, text in recs:
+        x, y = tr.classify(text)
+        p = per.setdefault(au, [0, 0])
+        p[0] += x
+        p[1] += y
+        trr += x > 0 and y == 0
+        frr += y > 0
+    return per, {"true_records": trr, "false_records": frr, "false_record_share": frr / (trr + frr) if trr + frr else 0.0}
+
+
 async def run_episode(spec, llms, cfg):
     t0 = time.time()
     logf = cfg.get("_log") or (lambda lvl, m: None)
@@ -327,23 +361,7 @@ async def run_episode(spec, llms, cfg):
     res.update({"rounds_run": rounds_run, "wall_s": round(time.time() - t0, 2), "failed": fail, "t_start": round(t0, 3), "trajectory": traj})
     if tracker:
         final_ok = {i: (a_cur.get(i, False) if not team_mode else team_cur.get(i, False)) for i in items_by_id}
-        ev = tracker.summary(final_ok, a_first, {"tok": epm.snap()["tok_total"], "round": rounds_run})
-        res["links"] = ev["links"]
-        res["evidence_items"] = ev["items"]
-        causes = {}
-        for it in ev["items"]:
-            causes[it["cause"]] = causes.get(it["cause"], 0) + 1
-        res["evidence"] = {
-            "causes": causes,
-            "items_avail_end": sum(it["avail_at_end"] for it in ev["items"]),
-            "links_supplied_by_B": sum(1 for l in ev["links"] if l["first_supplier"] == "B"),
-            "links_removed": sum(l["removed"] for l in ev["links"]),
-            "links_conflict_end": sum(l["conflict_end"] for l in ev["links"]),
-            "links_ever_conflict": sum(l["ever_conflict"] for l in ev["links"]),
-            "conflict_tok_sum": sum(l["conflict_tok"] for l in ev["links"]),
-            "conflict_rounds_sum": sum(l["conflict_rounds"] for l in ev["links"]),
-            "mean_lag_tok": (lambda v: sum(v) / len(v) if v else None)([it["lag_tok"] for it in ev["items"] if it["lag_tok"] is not None]),
-        }
+        res["links"], res["evidence_items"], res["evidence"] = summarize_evidence(tracker, final_ok, a_first, {"tok": epm.snap()["tok_total"], "round": rounds_run})
     if live is not None:
         live["done"] += 1
         live["by_mode"].setdefault(spec["mode"], []).append(res.get("score", 0))
@@ -436,15 +454,9 @@ def evaluate(spec, inst, alloc, store, subs, agents, timeline=None, epm=None, sc
     for a in per_agent:
         per_agent[a]["records_final"] = sum(1 for au, _ in recs if au == a)
     if inst.task == "factfind":
+        cper, cmem = claim_stats(mod, inst, recs)
         for a in per_agent:
-            t = f_ = 0
-            for au, text in recs:
-                if au == a:
-                    x, y = mod.claim_pairs(inst, text)
-                    t += x
-                    f_ += y
-            per_agent[a]["true_pairs"] = t
-            per_agent[a]["false_pairs"] = f_
+            per_agent[a]["true_pairs"], per_agent[a]["false_pairs"] = cper.get(a, [0, 0])
             mine = [p for p in alloc.get(a, []) if p.get("triple")]
             texts = [norm(text) for au, text in recs if au == a]
             shared = sum(1 for p in mine if any(norm(p["triple"][0]) in tx and norm(p["triple"][2]) in tx for tx in texts))
@@ -476,7 +488,7 @@ def evaluate(spec, inst, alloc, store, subs, agents, timeline=None, epm=None, sc
     res["cost"] = {
         **{k: tot.get(k) for k in ("tok_in", "tok_out", "tok_cached", "tok_processed", "tok_total", "flops", "req_s", "calls", "retries")},
         "completed": done_at is not None,
-        "still_correct_at_end": done_at is not None and main["solved"] == len(items),
+        "still_correct_at_end": done_at is not None and sum(cur.values()) == len(items),
         "tok_to_complete": done_at["cum_tok"] if done_at else None,
         "processed_to_complete": done_at["cum_processed"] if done_at else None,
         "flops_to_complete": done_at["cum_flops"] if done_at else None,
@@ -491,14 +503,7 @@ def evaluate(spec, inst, alloc, store, subs, agents, timeline=None, epm=None, sc
     }
     res["mem"] = store.structure()
     if inst.task == "factfind":
-        tr = fr = 0
-        for au, text in recs:
-            x, y = mod.claim_pairs(inst, text)
-            tr += x > 0 and y == 0
-            fr += y > 0
-        res["mem"]["true_records"] = tr
-        res["mem"]["false_records"] = fr
-        res["mem"]["false_record_share"] = fr / (tr + fr) if tr + fr else 0.0
+        res["mem"].update(cmem)
     res["n_items"] = len(items)
     res["state_hash"] = store.state_hash()
     res["replay_ok"] = store.replay_check()

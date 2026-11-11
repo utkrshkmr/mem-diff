@@ -3,6 +3,7 @@
 ```
 git clone https://github.com/utkrshkmr/mem-diff.git && cd mem-diff
 bash scripts/launch.sh configs/smoke.yaml
+tail -f logs/pipeline_smoke.log
 bash scripts/status.sh
 bash scripts/launch.sh configs/pilot.yaml
 bash scripts/launch.sh configs/full.yaml

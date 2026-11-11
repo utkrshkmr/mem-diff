@@ -158,6 +158,7 @@ def time_section(run_dir, ok, out):
     if tl is None:
         rep.append("_no timelines_\n")
         return None, rep
+    run = run_level(tl, ok, en, out)
     tl = tl[(tl["acl"] == "open")]
     bin_s = 10.0
     tmax = float(np.nanpercentile(tl["t"], 99)) if len(tl) else 0
@@ -179,7 +180,6 @@ def time_section(run_dir, ok, out):
     peak = seq.groupby(["backend", "mode"]).agg(peak_tok_per_s=("tok_per_s", "max"), mean_tok_per_s=("tok_per_s", "mean"), peak_mem_ops_per_s=("mem_ops_per_s", "max"))
     rep.append("Per-episode intensity (sequential commits), tokens/s within an episode:\n")
     rep.append(md(order(peak), "{:.1f}"))
-    run = run_level(tl, ok, en, out)
     rep += run["rep"]
     if en is not None and "cost_flops" in ok:
         f = ok.set_index("id")["cost_flops"].fillna(0)

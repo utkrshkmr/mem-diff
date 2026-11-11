@@ -8,9 +8,11 @@ export PY=.venv/bin/python
 RUN=$($PY -c "import yaml;print(yaml.safe_load(open('$CFG'))['run'])")
 OUT=results/$RUN
 mkdir -p "$OUT" logs
-exec > >(tee -a "$OUT/pipeline.log") 2>&1
+LOG=logs/pipeline_$RUN.log
+export MD_LOG=$LOG
+exec > >(tee -a "$LOG") 2>&1
 echo "[pipeline] $(date -u) config=$CFG run=$RUN host=$(hostname) commit=$(git rev-parse --short HEAD)"
-nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | sed 's/^/[gpu] /'
+nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | sed 's/^/[gpu] /' || echo "[gpu] host nvidia-smi unavailable; sampling through the model containers"
 $PY -m memdiff.cli plan "$CFG" | tail -2
 finish() {
   for f in logs/vllm_*.log; do [ -f "$f" ] && tail -200 "$f" > "$OUT/$(basename "$f")"; done
@@ -21,7 +23,13 @@ bash scripts/serve.sh "$CFG" || { echo "[pipeline] serving failed"; finish serve
 $PY -m memdiff.cli preflight "$CFG" || { echo "[pipeline] preflight failed"; finish preflight-failed; exit 1; }
 GS=$($PY -c "import yaml;print(yaml.safe_load(open('$CFG')).get('gpu_sample_s',2))")
 [ -f "$OUT/gpu.csv" ] || echo "unix,index,power_w,util_pct,mem_used_mib,sm_clock_mhz,temp_c" > "$OUT/gpu.csv"
-( while true; do T=$(date +%s.%N); nvidia-smi --query-gpu=index,power.draw,utilization.gpu,memory.used,clocks.sm,temperature.gpu --format=csv,noheader,nounits 2>/dev/null | sed "s/^/$T,/; s/ //g" >> "$OUT/gpu.csv"; sleep "$GS"; done ) &
+Q="--query-gpu=index,power.draw,utilization.gpu,memory.used,clocks.sm,temperature.gpu --format=csv,noheader,nounits"
+smi() {
+  if nvidia-smi $Q 2>/dev/null; then return; fi
+  C=$(docker ps --format '{{.Names}}' 2>/dev/null | grep '^md-' | head -1)
+  [ -n "$C" ] && docker exec "$C" nvidia-smi $Q 2>/dev/null
+}
+( while true; do T=$(date +%s.%N); smi | grep -E '^[0-9]' | sed "s/^/$T,/; s/ //g" >> "$OUT/gpu.csv"; sleep "$GS"; done ) &
 SAMPLER=$!
 ( while sleep "${MD_PUSH_EVERY:-1800}"; do bash scripts/push.sh "$RUN" progress; done ) &
 PUSHER=$!

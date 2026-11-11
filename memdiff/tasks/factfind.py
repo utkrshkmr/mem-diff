@@ -117,25 +117,34 @@ TYPE_PAIRS = {}
 for r, (a, b, _) in REL.items():
     TYPE_PAIRS.setdefault((a, b), set()).add(r)
 
-KW = {
-    "works_at": ("works at", "works for", "work at", "employ", "works_at", "works in", "job at"),
-    "managed_by": ("managed by", "manager", "manages", "managed_by", "reports to", "boss", "supervis"),
-    "born_in": ("born in", "born_in", "birthplace", "was born"),
-    "headquartered_in": ("headquarter", "hq", "based in", "headquartered_in"),
-    "located_in": ("located in", "located_in", "is in", "lies in", "in the country", "country"),
-    "founded_by": ("founded by", "founder", "founded", "founded_by", "established by", "created by"),
+STEMS = {
+    "works_at": ("work", "employ", "job at", "company of", "company is"),
+    "managed_by": ("manag", "boss", "report", "supervis"),
+    "born_in": ("born", "birth"),
+    "headquartered_in": ("headquarter", "hq", "head office", "based"),
+    "located_in": ("locat", "country", "situated", "lies in", "city in", "town in"),
+    "founded_by": ("found", "establish", "creat"),
 }
+ACTIVE = re.compile(r"\b(manages|supervises|is the manager of|is the boss of|founded|established|created|employs)\b")
+NEG = re.compile(r"\b(not|no|never|isn't|wasn't|doesn't|didn't|incorrect|wrong|false|instead of|rather than)\b|n't\b")
+COPULA = re.compile(r"^[\s,:=\-|()>'\"]*(is|was|are|=|:|->|-|\|)?\s*(in|at|by)?[\s,:=\-|()>'\"]*(the\s+)?$")
+LEAD = re.compile(r"\b(of|where|whose|that employs|which employs|for)\s+(the\s+)?(company\s+)?$")
 
 
-def rel_between(ta, tb, gap):
-    g = " " + gap.casefold().replace("_", " ") + " "
-    for r, (x, y, _) in REL.items():
-        if {x, y} == {ta, tb} or (x == ta and y == tb) or (x == tb and y == ta):
-            if any(k.replace("_", " ") in g for k in KW[r]):
-                return r
+def rels_in(t):
+    t = " " + t.casefold().replace("_", " ") + " "
+    return [r for r, ks in STEMS.items() if any(k in t for k in ks)]
+
+
+def orient(r, a, ta, b, tb, gap):
+    x, y, _ = REL[r]
+    if (ta, tb) == (x, y) and (ta, tb) != (y, x):
+        return (a, r, b)
+    if (tb, ta) == (x, y) and (ta, tb) != (x, y):
+        return (b, r, a)
+    if (ta, tb) == (x, y):
+        return (b, r, a) if ACTIVE.search(gap.casefold()) else (a, r, b)
     return None
-
-
 class Tracker:
     def __init__(self, inst, alloc):
         ents = inst.truth["entities"]
@@ -143,6 +152,11 @@ class Tracker:
         names = sorted(self.typ, key=len, reverse=True)
         self.rx = re.compile(r"(?<!\w)(" + "|".join(re.escape(n) for n in names) + r")(?!\w)", re.IGNORECASE)
         self.world = {frozenset((a, b)) for a, r, b in inst.truth["triples"]}
+        self.truth = {(a, r, b) for a, r, b in inst.truth["triples"]}
+        nxt = {}
+        for a, r, b in inst.truth["triples"]:
+            nxt.setdefault(a, set()).add(b)
+        self.reach = {frozenset((a, b)) for a, bs in nxt.items() for b in bs} | {frozenset((a, c)) for a, bs in nxt.items() for b in bs for c in nxt.get(b, ())}
         self.cache = {}
         obj = {(a, r): b for a, r, b in inst.truth["triples"]}
         priv = {a: {tuple(p["triple"]) for p in alloc.get(a, []) if p.get("triple")} for a in ("A", "B")}
@@ -155,45 +169,67 @@ class Tracker:
         self.item_hist = {i: [] for i in self.items}
         self.cur = {}
 
+    def claims(self, text):
+        if text in self.cache:
+            return self.cache[text]
+        key = text
+        text = text.replace("_", " ")
+        found = [(m.start(), m.end(), self.typ[m.group(1).casefold()]) for m in self.rx.finditer(text)]
+        good, bad = [], []
+        for (i, ie, (a, ta)), (j, je, (b, tb)) in zip(found, found[1:]):
+            gap = text[ie:j]
+            if a == b or len(gap) > 80 or NEG.search(gap.casefold()) or re.search(r"[.;!?]\s", gap):
+                continue
+            lead = text[max(0, i - 60):i]
+            sent = re.split(r"[.;!?]\s", lead)[-1]
+            pre = rels_in(sent) if LEAD.search(sent.casefold()) else []
+            gr = rels_in(gap)
+            if pre and gr and not set(pre) & set(gr):
+                continue
+            if NEG.search(sent.casefold()):
+                continue
+            if not gr and not pre and re.fullmatch(r"\s*(is|are)\s+in\s+", gap.casefold()):
+                gr = ["located_in"]
+            if gr:
+                cand = gr
+            elif pre and COPULA.match(gap.casefold()):
+                cand = pre
+            else:
+                continue
+            t = None
+            for r in cand:
+                t = orient(r, a, ta, b, tb, gap)
+                if t:
+                    break
+            if t:
+                good.append(t)
+            elif frozenset((a, b)) not in self.reach:
+                bad.append((a, cand[0], b))
+        self.cache[key] = (good, bad)
+        return self.cache[key]
+
     def pairs(self, text):
-        if text not in self.cache:
-            found = [(m.start(), m.end(), self.typ[m.group(1).casefold()]) for m in self.rx.finditer(text)]
-            out = []
-            for (i, ie, (a, ta)), (j, je, (b, tb)) in zip(found, found[1:]):
-                if a == b or j - ie > 80 or not ((ta, tb) in TYPE_PAIRS or (tb, ta) in TYPE_PAIRS):
-                    continue
-                if re.search(r"\b(of|where|whose|that employs)\s+(the\s+)?$", text[max(0, i - 30):i], re.IGNORECASE):
-                    continue
-                if rel_between(ta, tb, text[ie:j]):
-                    out.append((a, b))
-            self.cache[text] = out
-        return self.cache[text]
+        return [(s_, o) for s_, r, o in self.claims(text)[0]]
 
     def classify(self, text):
-        t = f = 0
-        for a, b in self.pairs(text):
-            if frozenset((a, b)) in self.world:
-                t += 1
-            else:
-                f += 1
-        return t, f
+        good, bad = self.claims(text)
+        t = sum(1 for c in good if c in self.truth)
+        return t, len(good) - t + len(bad)
 
     def update(self, records, at):
         index = {}
         partner = {}
         for au, tx in records:
-            for a, b in self.pairs(tx):
-                index.setdefault(frozenset((a, b)), set()).add(au)
-                partner.setdefault(a, set()).add(b)
-                partner.setdefault(b, set()).add(a)
+            for a, r, b in self.claims(tx)[0]:
+                index.setdefault((a, r, b), set()).add(au)
+                partner.setdefault((a, r), set()).add(b)
         per_item = {i: {"avail": True, "mem": True} for i in self.items}
         lp = lc = la = 0
         for L in self.links:
-            k = frozenset((L["s"], L["o"]))
+            k = (L["s"], L["r"], L["o"])
             present = k in index
             by = sorted(index.get(k, ()))
-            ot = self.typ[L["o"].casefold()][1]
-            conf = sorted(x for x in partner.get(L["s"], ()) if x != L["o"] and self.typ[x.casefold()][1] == ot and frozenset((L["s"], x)) not in self.world)
+            conf = sorted(x for x in partner.get((L["s"], L["r"]), ()) if x != L["o"])
             st = (present, tuple(by), tuple(conf))
             if st != L["_last"]:
                 L["hist"].append({**at, "present": present, "by": by, "conflict": conf})

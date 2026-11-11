@@ -69,6 +69,9 @@ def main():
         if name == "run":
             p.add_argument("--limit", type=int, default=None)
         p.set_defaults(fn=fn)
+    p = sp.add_parser("rescore")
+    p.add_argument("run_dir")
+    p.set_defaults(fn=lambda a: __import__("memdiff.rescore", fromlist=["rescore"]).rescore(a.run_dir))
     p = sp.add_parser("analyze")
     p.add_argument("run_dir")
     p.set_defaults(fn=cmd_analyze)

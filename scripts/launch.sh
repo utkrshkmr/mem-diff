@@ -12,5 +12,5 @@ setsid nohup bash scripts/pipeline.sh "$CFG" > "logs/launch_$(date +%Y%m%d_%H%M%
 echo $! > logs/pipeline.pid
 echo "started pid $(cat logs/pipeline.pid) for $CFG"
 RUN=$(python3 -c "import yaml;print(yaml.safe_load(open('$CFG'))['run'])" 2>/dev/null || grep -m1 '^run:' "$CFG" | awk '{print $2}')
-for i in $(seq 1 60); do [ -f "results/$RUN/pipeline.log" ] && break; sleep 1; done
-echo "log: results/$RUN/pipeline.log"
+for i in $(seq 1 60); do [ -f "logs/pipeline_$RUN.log" ] && break; sleep 1; done
+echo "log: logs/pipeline_$RUN.log (copied to results/$RUN/pipeline.log on each push)"
