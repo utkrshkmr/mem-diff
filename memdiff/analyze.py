@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 KEYS = ["task", "mode", "backend", "acl", "schedule", "model_A", "model_B"]
-ADV = ["critic", "poison", "poison_warned", "zerosum"]
+ADV = ["critic", "poison", "poison_warned", "zerosum", "sabotage"]
 
 
 def load(run_dir):
@@ -17,10 +17,14 @@ def load(run_dir):
         rows[r["id"]] = r
     flat = []
     for r in rows.values():
-        f = {k: v for k, v in r.items() if k not in ("agents", "cost", "mem", "trajectory")}
-        for grp in ("cost", "mem"):
+        f = {k: v for k, v in r.items() if k not in ("agents", "cost", "mem", "trajectory", "links", "evidence_items", "evidence")}
+        for grp in ("cost", "mem", "evidence"):
             for k, v in (r.get(grp) or {}).items():
-                f[f"{grp}_{k}"] = v
+                if isinstance(v, dict):
+                    for k2, v2 in v.items():
+                        f[f"{grp}_{k}_{k2}"] = v2
+                else:
+                    f[f"{grp}_{k}"] = v
         for a, st in (r.get("agents") or {}).items():
             for k, v in st.items():
                 f[f"{a}_{k}"] = v
@@ -131,7 +135,13 @@ def analyze(run_dir):
         energy, tsec = time_section(run_dir, ok, out)
     except Exception as e:
         tsec = [f"time-axis analysis error: {e}\n"]
-    rep = rep[:3] + structure_section(ok, out) + cost_section(ok, out, energy) + tsec + rep[3:]
+    from .evidence import evidence_section
+    try:
+        esec = evidence_section(run_dir, ok, out)
+    except Exception as e:
+        import traceback
+        esec = [f"evidence analysis error: {e}\n```\n{traceback.format_exc()[-1500:]}\n```\n"]
+    rep = rep[:3] + esec + structure_section(ok, out) + cost_section(ok, out, energy) + tsec + rep[3:]
     open(os.path.join(out, "report.md"), "w").write("\n".join(rep))
     try:
         plots(ok, adv if len(adv) else None, out)

@@ -9,8 +9,8 @@ from .analyze import md, agg
 
 GEN = ["mem_records", "mem_records_A", "mem_records_B", "mem_writes", "mem_reads", "mem_destructive", "mem_churn", "mem_cross", "mem_contested", "mem_critiques", "mem_denied", "mem_state_bytes", "mem_false_record_share"]
 COST = ["cost_tok_total", "cost_tok_in", "cost_tok_out", "cost_tok_cached", "cost_tok_processed", "cost_flops", "cost_req_s", "cost_completed", "cost_tok_to_complete", "cost_flops_to_complete", "cost_t_to_complete", "cost_round_to_complete", "cost_tok_per_solved", "cost_adversary_tok_share", "wall_s"]
-PAIR = ["task", "backend", "schedule", "model_A", "seed"]
-MODE_ORDER = ["solo", "collab", "critic", "poison", "poison_warned", "zerosum"]
+PAIR = ["task", "backend", "schedule", "acl", "model_A", "seed"]
+MODE_ORDER = ["solo", "collab", "assist", "sabotage", "critic", "poison", "poison_warned", "zerosum"]
 
 
 def main_slice(ok):
@@ -119,18 +119,8 @@ def load_timelines(run_dir, ok):
 
 
 def load_traj(run_dir, ok):
-    keep = set(ok["id"])
-    rows = []
-    for line in open(os.path.join(run_dir, "episodes.jsonl")):
-        try:
-            r = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if r["id"] not in keep:
-            continue
-        for t in r.get("trajectory") or []:
-            rows.append({"id": r["id"], "task": r["task"], "mode": r["mode"], "backend": r["backend"], "acl": r["acl"], "schedule": r["schedule"], "model_A": r["model_A"], "model_B": r.get("model_B") or "-", **t})
-    return pd.DataFrame(rows)
+    from .evidence import load_nested
+    return load_nested(run_dir, ok, "trajectory")
 
 
 def gpu_energy(run_dir):

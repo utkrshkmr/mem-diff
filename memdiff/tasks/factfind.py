@@ -118,22 +118,134 @@ for r, (a, b, _) in REL.items():
     TYPE_PAIRS.setdefault((a, b), set()).add(r)
 
 
-def claim_pairs(inst, text):
-    ents = inst.truth["entities"]
-    found = []
-    for typ, names in ents.items():
-        for n in names:
-            for m in re.finditer(r"(?<![\w])" + re.escape(n) + r"(?![\w])", text, re.IGNORECASE):
-                found.append((m.start(), n, typ))
-    found.sort()
-    world = {(s, o) for s, r, o in inst.truth["triples"]}
-    true_n = false_n = 0
-    for (i, a, ta), (j, b, tb) in zip(found, found[1:]):
-        if (ta, tb) in TYPE_PAIRS or (tb, ta) in TYPE_PAIRS:
-            if j - i > 160:
-                continue
-            if (a, b) in world or (b, a) in world:
-                true_n += 1
+class Tracker:
+    def __init__(self, inst, alloc):
+        ents = inst.truth["entities"]
+        self.typ = {n.casefold(): (n, t) for t, ns in ents.items() for n in ns}
+        names = sorted(self.typ, key=len, reverse=True)
+        self.rx = re.compile(r"(?<!\w)(" + "|".join(re.escape(n) for n in names) + r")(?!\w)", re.IGNORECASE)
+        self.world = {frozenset((a, b)) for a, r, b in inst.truth["triples"]}
+        self.cache = {}
+        obj = {(a, r): b for a, r, b in inst.truth["triples"]}
+        priv = {a: {tuple(p["triple"]) for p in alloc.get(a, []) if p.get("triple")} for a in ("A", "B")}
+        self.links = []
+        for it in inst.items:
+            for hop, (a, r) in enumerate(it["chain"]):
+                b = obj[(a, r)]
+                self.links.append({"item": it["id"], "hop": hop, "s": a, "r": r, "o": b, "kind": it["kind"], "in_A": (a, r, b) in priv["A"], "in_B": (a, r, b) in priv["B"], "hist": [], "_last": None})
+        self.items = [it["id"] for it in inst.items]
+        self.item_hist = {i: [] for i in self.items}
+        self.cur = {}
+
+    def pairs(self, text):
+        if text not in self.cache:
+            found = [(m.start(), self.typ[m.group(1).casefold()]) for m in self.rx.finditer(text)]
+            out = []
+            for (i, (a, ta)), (j, (b, tb)) in zip(found, found[1:]):
+                if a != b and j - i <= 160 and ((ta, tb) in TYPE_PAIRS or (tb, ta) in TYPE_PAIRS):
+                    out.append((a, b))
+            self.cache[text] = out
+        return self.cache[text]
+
+    def classify(self, text):
+        t = f = 0
+        for a, b in self.pairs(text):
+            if frozenset((a, b)) in self.world:
+                t += 1
             else:
-                false_n += 1
-    return true_n, false_n
+                f += 1
+        return t, f
+
+    def update(self, records, at):
+        index = {}
+        partner = {}
+        for au, tx in records:
+            for a, b in self.pairs(tx):
+                index.setdefault(frozenset((a, b)), set()).add(au)
+                partner.setdefault(a, set()).add(b)
+                partner.setdefault(b, set()).add(a)
+        per_item = {i: {"avail": True, "mem": True} for i in self.items}
+        lp = lc = la = 0
+        for L in self.links:
+            k = frozenset((L["s"], L["o"]))
+            present = k in index
+            by = sorted(index.get(k, ()))
+            ot = self.typ[L["o"].casefold()][1]
+            conf = sorted(x for x in partner.get(L["s"], ()) if x != L["o"] and self.typ[x.casefold()][1] == ot and frozenset((L["s"], x)) not in self.world)
+            st = (present, tuple(by), tuple(conf))
+            if st != L["_last"]:
+                L["hist"].append({**at, "present": present, "by": by, "conflict": conf})
+                L["_last"] = st
+            avail = L["in_A"] or present
+            lp += present
+            lc += bool(conf)
+            la += avail
+            per_item[L["item"]]["avail"] &= avail
+            per_item[L["item"]]["mem"] &= present
+        for i, v in per_item.items():
+            if self.cur.get(i) != v["avail"]:
+                self.item_hist[i].append({**at, "avail": v["avail"]})
+                self.cur[i] = v["avail"]
+        return {
+            "ev_items_avail_A": sum(v["avail"] for v in per_item.values()),
+            "ev_items_in_mem": sum(v["mem"] for v in per_item.values()),
+            "ev_links_present": lp,
+            "ev_links_conflict": lc,
+            "ev_links_avail_A": la,
+            "ev_links_total": len(self.links),
+        }
+
+    def summary(self, final_correct, first_correct, end):
+        links = []
+        for L in self.links:
+            h = L["hist"]
+            fp = next((e for e in h if e["present"]), None)
+            last = h[-1] if h else {"present": False, "conflict": [], "by": []}
+            ctok = cr = 0.0
+            for e, nx in zip(h, h[1:] + [end]):
+                if e["conflict"]:
+                    ctok += nx["tok"] - e["tok"]
+                    cr += nx["round"] - e["round"]
+            sup = sorted({a for e in h for a in e["by"]})
+            links.append({
+                "item": L["item"], "hop": L["hop"], "kind": L["kind"], "rel": L["r"], "in_A": L["in_A"], "in_B": L["in_B"],
+                "first_present_tok": fp["tok"] if fp else None, "first_present_round": fp["round"] if fp else None, "first_supplier": fp["by"][0] if fp and fp["by"] else None,
+                "suppliers": sup, "present_end": bool(last["present"]), "removed": bool(fp) and not last["present"],
+                "ever_conflict": any(e["conflict"] for e in h), "conflict_end": bool(last["conflict"]), "conflict_tok": ctok, "conflict_rounds": cr,
+                "n_changes": len(h),
+            })
+        items = []
+        for i in self.items:
+            ih = self.item_hist[i]
+            fa = next((e for e in ih if e["avail"]), None)
+            ever = fa is not None
+            at_end = bool(ih and ih[-1]["avail"])
+            cend = any(l["conflict_end"] for l in links if l["item"] == i)
+            ok = bool(final_correct.get(i))
+            if ok:
+                cause = "correct"
+            elif not ever:
+                cause = "never_available"
+            elif not at_end:
+                cause = "removed"
+            elif cend:
+                cause = "conflict_at_end"
+            else:
+                cause = "available_not_used"
+            fc = first_correct.get(i)
+            items.append({
+                "item": i, "kind": next(l["kind"] for l in links if l["item"] == i), "correct_end": ok, "cause": cause,
+                "first_avail_tok": fa["tok"] if fa else None, "first_avail_round": fa["round"] if fa else None,
+                "first_correct_tok": fc["tok"] if fc else None, "first_correct_round": fc["round"] if fc else None,
+                "lag_tok": (fc["tok"] - fa["tok"]) if fc and fa else None, "lag_rounds": (fc["round"] - fa["round"]) if fc and fa else None,
+                "avail_at_end": at_end, "conflict_at_end": cend,
+            })
+        return {"links": links, "items": items}
+
+
+def claim_pairs(inst, text):
+    tr = inst.truth.get("_tracker")
+    if tr is None:
+        tr = Tracker(inst, {})
+        inst.truth["_tracker"] = tr
+    return tr.classify(text)

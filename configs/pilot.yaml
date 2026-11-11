@@ -65,6 +65,8 @@ blocks:
   modes:
   - solo
   - collab
+  - assist
+  - sabotage
   - critic
   - poison
   - poison_warned
@@ -98,6 +100,8 @@ blocks:
   - poison
   - poison_warned
   - zerosum
+  - assist
+  - sabotage
   backends:
   - scratchpad
   - kv
@@ -121,6 +125,8 @@ blocks:
   - collab
   - zerosum
   - poison
+  - assist
+  - sabotage
   backends: *id002
   acl:
   - open
@@ -137,6 +143,8 @@ blocks:
   - poison
   - zerosum
   - critic
+  - assist
+  - sabotage
   backends: *id002
   acl:
   - open
@@ -150,3 +158,5 @@ blocks:
   seeds:
   - 0
 gpu_sample_s: 2
+verbose: 2
+heartbeat_s: 60

@@ -23,6 +23,8 @@ blocks:
   modes:
   - solo
   - collab
+  - assist
+  - sabotage
   - critic
   - poison
   - poison_warned
@@ -47,3 +49,5 @@ blocks:
     - m
   seeds:
   - 0
+verbose: 2
+heartbeat_s: 2

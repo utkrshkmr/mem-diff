@@ -64,7 +64,8 @@ blocks:
   - codefix
   modes:
   - collab
-  - poison
+  - assist
+  - sabotage
   backends:
   - kg
   - scratchpad
@@ -78,3 +79,5 @@ blocks:
   seeds:
   - 0
 gpu_sample_s: 2
+verbose: 2
+heartbeat_s: 60
