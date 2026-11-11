@@ -1,7 +1,0 @@
-[pipeline] Wed Nov 11 04:53:56 AM UTC 2026 config=configs/smoke.yaml run=smoke host=TRY-74124-gpu01 commit=30e1c9d
-total 18
-models q8
-[serve] starting q8 (Qwen/Qwen3-8B) on 8001 via docker
-[serve] pulling vllm/vllm-openai:latest (skipped if cached)
-[serve] 04:54:44 waiting for q8 (60s): (EngineCore pid=349) INFO 11-11 04:54:33 [model_runner.py:399] Loading model from scratch...
-[serve] 04:55:44 waiting for q8 (120s): (EngineCore pid=349) INFO 11-11 04:55:22 [monitor.py:91] [backbone] Initial profiling/warmup run took 0.02 s
