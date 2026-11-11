@@ -124,8 +124,9 @@ def analyze(run_dir):
     rep.append("## By model pairing\n")
     rep.append(md(ok.pivot_table(index=["model_A", "model_B"], columns="mode", values="score", aggfunc="mean")))
     rep.append("## Tool-use health\n")
-    hc = ["A_no_tool_turns", "A_bad_args", "A_errors", "A_denied", "B_no_tool_turns", "B_bad_args", "B_errors", "A_tok_in", "A_tok_out", "wall_s"]
+    hc = ["A_no_tool_turns", "A_malformed_calls", "A_truncated", "A_bad_args", "A_errors", "A_denied", "B_no_tool_turns", "B_malformed_calls", "B_truncated", "B_bad_args", "B_errors", "A_tok_in", "A_tok_out", "wall_s"]
     rep.append(md(agg(ok, ["model_A"], hc), "{:.1f}"))
+    rep.append(md(agg(ok, ["task", "model_A"], [c for c in hc if "malformed" in c or "truncated" in c or "no_tool" in c]), "{:.2f}"))
     if len(failed):
         rep.append("## Failures\n")
         rep.append(md(failed.groupby(["model_A", "mode"])["failed"].agg(lambda s: s.iloc[0][:120]).to_frame().join(failed.groupby(["model_A", "mode"]).size().rename("n"))))

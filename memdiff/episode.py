@@ -106,7 +106,7 @@ class Agent:
         self.msgs = msgs
         self.usage = {"in": 0, "out": 0, "calls": 0}
         self.meter = Meter()
-        self.stats = {"no_tool_turns": 0, "bad_args": 0, "unknown_tool": 0, "submissions": 0, "llm_errors": 0}
+        self.stats = {"no_tool_turns": 0, "bad_args": 0, "unknown_tool": 0, "submissions": 0, "llm_errors": 0, "malformed_calls": 0, "truncated": 0}
 
 
 def tag(spec):
@@ -217,6 +217,17 @@ async def run_episode(spec, llms, cfg):
                        "tok_in": usage["in"], "tok_out": usage["out"], "tok_cached": usage.get("cached", 0), "req_s": round(usage.get("req_s", 0.0), 3), "flops": fl,
                        "n_tool_calls": len(calls), "mem_reads": 0, "mem_writes": 0, "mem_destructive": 0, "mem_denied": 0, "mem_read_chars": 0, "submits": 0}
                 timeline.append(row)
+                row["truncated"] = int(bool(usage.get("truncated")))
+                row["malformed"] = int(bool(usage.get("malformed")))
+                ag.stats["truncated"] += row["truncated"]
+                if not calls and (usage.get("malformed") or usage.get("truncated")) and step < T - 1:
+                    ag.stats["malformed_calls"] += 1
+                    why = "was cut off because it was too long" if usage.get("truncated") else "could not be parsed as JSON"
+                    ag.msgs.append({"role": "user", "content": f"Your last tool call {why}. Re-issue it as a single valid tool call; keep arguments short and escape newlines (\\n) and quotes inside strings."})
+                    finish_row(row)
+                    if cfg.get("_v", 0) >= 3:
+                        logf(3, f"{T_} r{rnd + 1} {a} step{step + 1} malformed tool call, retrying")
+                    continue
                 if not calls:
                     ag.stats["no_tool_turns"] += 1
                     finish_row(row)

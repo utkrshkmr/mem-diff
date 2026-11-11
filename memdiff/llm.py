@@ -61,6 +61,8 @@ class LLM:
         det = getattr(u, "prompt_tokens_details", None)
         cached = (getattr(det, "cached_tokens", 0) if det is not None else 0) or 0
         usage = {"in": getattr(u, "prompt_tokens", 0) or 0, "out": getattr(u, "completion_tokens", 0) or 0, "cached": cached, "req_s": time.perf_counter() - t0, "retries": attempt}
+        usage["truncated"] = r.choices[0].finish_reason == "length"
+        usage["malformed"] = not calls and "<tool_call>" in content
         return msg, calls, usage
 
 
@@ -110,7 +112,7 @@ class MockLLM:
         msg = {"role": "assistant", "content": "", "tool_calls": [{"id": i, "type": "function", "function": {"name": n, "arguments": a}} for i, n, a in out]}
         await asyncio.sleep(0)
         n_in = sum(len(str(m.get("content", ""))) + len(json.dumps(m.get("tool_calls", ""))) for m in messages) // 4
-        return msg, out, {"in": n_in, "out": 20, "cached": int(n_in * 0.8) if len(messages) > 3 else 0, "req_s": 0.01, "retries": 0}
+        return msg, out, {"in": n_in, "out": 20, "cached": int(n_in * 0.8) if len(messages) > 3 else 0, "req_s": 0.01, "retries": 0, "truncated": False, "malformed": False}
 
 
 def make_llm(name, cfg):
