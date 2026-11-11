@@ -17,6 +17,8 @@ $PY -m memdiff.cli models "$CFG" | while read -r NAME HF SERVED PORT UTIL MAXLEN
   echo "[serve] starting $NAME ($HF) on $PORT via $MODE"
   if [ "$MODE" = docker ]; then
     docker rm -f "md-$NAME" >/dev/null 2>&1
+    echo "[serve] pulling $IMAGE (skipped if cached)"
+    docker pull -q "$IMAGE" >/dev/null 2>&1 || true
     docker run -d --name "md-$NAME" --gpus all --ipc=host -p "$PORT:8000" \
       -v "$HF_CACHE:/root/.cache/huggingface" ${HF_TOKEN:+-e HF_TOKEN=$HF_TOKEN} \
       "$IMAGE" $ARGS > /dev/null || { echo "[serve] docker run failed for $NAME"; exit 1; }
@@ -28,6 +30,10 @@ $PY -m memdiff.cli models "$CFG" | while read -r NAME HF SERVED PORT UTIL MAXLEN
   fi
   for i in $(seq 1 ${MD_SERVE_WAIT:-240}); do
     if curl -sf "http://127.0.0.1:$PORT/v1/models" >/dev/null; then echo "[serve] $NAME ready after $((i*15))s"; break; fi
+    if [ $((i % 4)) -eq 0 ]; then
+      LAST=$(grep -v '^\s*$' "logs/vllm_$NAME.log" 2>/dev/null | tail -1 | cut -c1-200)
+      echo "[serve] $(date +%H:%M:%S) waiting for $NAME ($((i*15))s): ${LAST:-no log yet}"
+    fi
     if [ "$MODE" = docker ] && [ "$(docker inspect -f '{{.State.Running}}' "md-$NAME" 2>/dev/null)" != true ]; then
       echo "[serve] $NAME container exited"; docker logs --tail 60 "md-$NAME"; exit 1
     fi
