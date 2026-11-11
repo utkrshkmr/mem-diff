@@ -86,15 +86,25 @@ def first_user(inst, pieces, role, truth):
     return "\n".join(lines)
 
 
-def prune(msgs, budget):
-    size = lambda m: len(str(m.get("content") or "")) + len(json.dumps(m.get("tool_calls", "")))
-    tot = sum(size(m) for m in msgs)
-    out = list(msgs)
-    while tot > budget and len(out) > 4:
-        tot -= size(out.pop(2))
-        while len(out) > 3 and out[2]["role"] == "tool":
-            tot -= size(out.pop(2))
-    return out
+def msize(m):
+    return len(str(m.get("content") or "")) + len(json.dumps(m.get("tool_calls", "")))
+
+
+def prune(msgs, budget, cut=0, keep=0.55):
+    head, tail = msgs[:2], msgs[2:]
+    cut = min(cut, len(tail))
+    view = tail[cut:]
+    tot = sum(map(msize, head)) + sum(map(msize, view))
+    if tot > budget:
+        target = budget * keep
+        while tot > target and len(tail) - cut > 2:
+            tot -= msize(tail[cut])
+            cut += 1
+        while cut < len(tail) - 1 and tail[cut]["role"] == "tool":
+            tot -= msize(tail[cut])
+            cut += 1
+        view = tail[cut:]
+    return head + view, cut
 
 
 class Agent:
@@ -106,6 +116,7 @@ class Agent:
         self.msgs = msgs
         self.usage = {"in": 0, "out": 0, "calls": 0}
         self.meter = Meter()
+        self.cut = 0
         self.stats = {"no_tool_turns": 0, "bad_args": 0, "unknown_tool": 0, "submissions": 0, "llm_errors": 0, "malformed_calls": 0, "truncated": 0}
 
 
@@ -236,7 +247,8 @@ async def run_episode(spec, llms, cfg):
                 ag.msgs[-1]["content"] += "\n\n" + head
             for step in range(T):
                 try:
-                    msg, calls, usage = await ag.llm.chat(prune(ag.msgs, budget), ag.tools, seed=spec["seed"] * 1000 + rnd * 10 + step + (500 if a == "B" else 0))
+                    view, ag.cut = prune(ag.msgs, budget, ag.cut)
+                    msg, calls, usage = await ag.llm.chat(view, ag.tools, seed=spec["seed"] * 1000 + rnd * 10 + step + (500 if a == "B" else 0))
                 except Exception as e:
                     ag.stats["llm_errors"] += 1
                     fail = f"{type(e).__name__}: {str(e)[:300]}"

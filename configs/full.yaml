@@ -6,7 +6,7 @@ context_chars: 70000
 tool_result_chars: 4000
 progress_every: 25
 concurrency: 128
-trace_sample: 0.3
+trace_sample: 1.0
 models:
   q8:
     hf: Qwen/Qwen3-8B
