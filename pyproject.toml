@@ -1,0 +1,8 @@
+[project]
+name = "memdiff"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["openai>=1.40", "pyyaml>=6", "pandas>=2.1", "matplotlib>=3.8"]
+
+[tool.setuptools]
+packages = ["memdiff", "memdiff.memory", "memdiff.tasks"]

@@ -1,0 +1,139 @@
+run: pilot
+out: results
+rounds: 8
+tools_per_turn: 6
+context_chars: 70000
+tool_result_chars: 4000
+progress_every: 25
+concurrency: 96
+trace_sample: 1.0
+models:
+  q8:
+    hf: Qwen/Qwen3-8B
+    served: q8
+    port: 8001
+    base_url: http://127.0.0.1:8001/v1
+    gpu_util: 0.14
+    max_model_len: 32768
+    thinking: false
+    temperature: 0.7
+    top_p: 0.8
+    top_k: 20
+    max_tokens: 1536
+  q30moe:
+    hf: Qwen/Qwen3-30B-A3B-Instruct-2507
+    served: q30moe
+    port: 8002
+    base_url: http://127.0.0.1:8002/v1
+    gpu_util: 0.34
+    max_model_len: 32768
+    thinking: false
+    temperature: 0.7
+    top_p: 0.8
+    top_k: 20
+    max_tokens: 1536
+  q32:
+    hf: Qwen/Qwen3-32B
+    served: q32
+    port: 8003
+    base_url: http://127.0.0.1:8003/v1
+    gpu_util: 0.36
+    max_model_len: 32768
+    thinking: false
+    temperature: 0.7
+    top_p: 0.8
+    top_k: 20
+    max_tokens: 1536
+blocks:
+- name: core
+  tasks: &id001
+  - factfind
+  - puzzle
+  - codefix
+  modes:
+  - solo
+  - collab
+  - critic
+  - poison
+  - poison_warned
+  - zerosum
+  backends: &id002
+  - scratchpad
+  - kv
+  - blackboard
+  - kg
+  - eventlog
+  - tuplespace
+  - datalog
+  - crdt
+  acl:
+  - open
+  schedule:
+  - sequential
+  pairs:
+  - - q8
+    - q8
+  - - q30moe
+    - q30moe
+  - - q32
+    - q32
+  seeds:
+  - 0
+- name: acl
+  tasks: *id001
+  modes:
+  - critic
+  - poison
+  - poison_warned
+  - zerosum
+  backends:
+  - scratchpad
+  - kv
+  - blackboard
+  - kg
+  - tuplespace
+  - datalog
+  - crdt
+  acl:
+  - owner
+  schedule:
+  - sequential
+  pairs:
+  - - q30moe
+    - q30moe
+  seeds:
+  - 0
+- name: simul
+  tasks: *id001
+  modes:
+  - collab
+  - zerosum
+  - poison
+  backends: *id002
+  acl:
+  - open
+  schedule:
+  - simultaneous
+  pairs:
+  - - q30moe
+    - q30moe
+  seeds:
+  - 0
+- name: mixed
+  tasks: *id001
+  modes:
+  - poison
+  - zerosum
+  - critic
+  backends: *id002
+  acl:
+  - open
+  schedule:
+  - sequential
+  pairs:
+  - - q32
+    - q8
+  - - q8
+    - q32
+  seeds:
+  - 0

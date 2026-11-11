@@ -1,0 +1,45 @@
+run: mock
+out: results
+rounds: 3
+tools_per_turn: 6
+context_chars: 70000
+tool_result_chars: 4000
+progress_every: 25
+concurrency: 32
+trace_sample: 0.2
+models:
+  m:
+    type: mock
+blocks:
+- name: all
+  tasks:
+  - factfind
+  - puzzle
+  - codefix
+  modes:
+  - solo
+  - collab
+  - critic
+  - poison
+  - poison_warned
+  - zerosum
+  backends:
+  - scratchpad
+  - kv
+  - blackboard
+  - kg
+  - eventlog
+  - tuplespace
+  - datalog
+  - crdt
+  acl:
+  - open
+  - owner
+  schedule:
+  - sequential
+  - simultaneous
+  pairs:
+  - - m
+    - m
+  seeds:
+  - 0

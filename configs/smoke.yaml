@@ -1,0 +1,67 @@
+run: smoke
+out: results
+rounds: 4
+tools_per_turn: 6
+context_chars: 70000
+tool_result_chars: 4000
+progress_every: 25
+concurrency: 16
+trace_sample: 1.0
+models:
+  q8:
+    hf: Qwen/Qwen3-8B
+    served: q8
+    port: 8001
+    base_url: http://127.0.0.1:8001/v1
+    gpu_util: 0.14
+    max_model_len: 32768
+    thinking: false
+    temperature: 0.7
+    top_p: 0.8
+    top_k: 20
+    max_tokens: 1536
+  q30moe:
+    hf: Qwen/Qwen3-30B-A3B-Instruct-2507
+    served: q30moe
+    port: 8002
+    base_url: http://127.0.0.1:8002/v1
+    gpu_util: 0.34
+    max_model_len: 32768
+    thinking: false
+    temperature: 0.7
+    top_p: 0.8
+    top_k: 20
+    max_tokens: 1536
+  q32:
+    hf: Qwen/Qwen3-32B
+    served: q32
+    port: 8003
+    base_url: http://127.0.0.1:8003/v1
+    gpu_util: 0.36
+    max_model_len: 32768
+    thinking: false
+    temperature: 0.7
+    top_p: 0.8
+    top_k: 20
+    max_tokens: 1536
+blocks:
+- name: smoke
+  tasks:
+  - factfind
+  - puzzle
+  - codefix
+  modes:
+  - collab
+  - poison
+  backends:
+  - kg
+  - scratchpad
+  acl:
+  - open
+  schedule:
+  - sequential
+  pairs:
+  - - q8
+    - q8
+  seeds:
+  - 0
