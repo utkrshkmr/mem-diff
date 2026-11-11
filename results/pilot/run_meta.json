@@ -1,0 +1,248 @@
+{
+ "config": {
+  "run": "pilot",
+  "out": "results",
+  "rounds": 8,
+  "tools_per_turn": 6,
+  "context_chars": 70000,
+  "tool_result_chars": 4000,
+  "progress_every": 25,
+  "concurrency": 96,
+  "trace_sample": 1.0,
+  "models": {
+   "q8": {
+    "hf": "Qwen/Qwen3-8B",
+    "served": "q8",
+    "port": 8001,
+    "base_url": "http://127.0.0.1:8001/v1",
+    "gpu_util": 0.14,
+    "max_model_len": 32768,
+    "thinking": false,
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "max_tokens": 1536,
+    "active_params_b": 8.2,
+    "total_params_b": 8.2,
+    "layers": 36,
+    "attn_dim": 4096
+   },
+   "q30moe": {
+    "hf": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+    "served": "q30moe",
+    "port": 8002,
+    "base_url": "http://127.0.0.1:8002/v1",
+    "gpu_util": 0.34,
+    "max_model_len": 32768,
+    "thinking": false,
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "max_tokens": 1536,
+    "active_params_b": 3.3,
+    "total_params_b": 30.5,
+    "layers": 48,
+    "attn_dim": 4096
+   },
+   "q32": {
+    "hf": "Qwen/Qwen3-32B",
+    "served": "q32",
+    "port": 8003,
+    "base_url": "http://127.0.0.1:8003/v1",
+    "gpu_util": 0.36,
+    "max_model_len": 32768,
+    "thinking": false,
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "max_tokens": 1536,
+    "active_params_b": 32.8,
+    "total_params_b": 32.8,
+    "layers": 64,
+    "attn_dim": 8192
+   }
+  },
+  "blocks": [
+   {
+    "name": "core",
+    "tasks": [
+     "factfind",
+     "puzzle",
+     "codefix"
+    ],
+    "modes": [
+     "solo",
+     "collab",
+     "assist",
+     "sabotage",
+     "critic",
+     "poison",
+     "poison_warned",
+     "zerosum"
+    ],
+    "backends": [
+     "scratchpad",
+     "kv",
+     "blackboard",
+     "kg",
+     "eventlog",
+     "tuplespace",
+     "datalog",
+     "crdt"
+    ],
+    "acl": [
+     "open"
+    ],
+    "schedule": [
+     "sequential"
+    ],
+    "pairs": [
+     [
+      "q8",
+      "q8"
+     ],
+     [
+      "q30moe",
+      "q30moe"
+     ],
+     [
+      "q32",
+      "q32"
+     ]
+    ],
+    "seeds": [
+     0
+    ]
+   },
+   {
+    "name": "acl",
+    "tasks": [
+     "factfind",
+     "puzzle",
+     "codefix"
+    ],
+    "modes": [
+     "critic",
+     "poison",
+     "poison_warned",
+     "zerosum",
+     "assist",
+     "sabotage"
+    ],
+    "backends": [
+     "scratchpad",
+     "kv",
+     "blackboard",
+     "kg",
+     "tuplespace",
+     "datalog",
+     "crdt"
+    ],
+    "acl": [
+     "owner"
+    ],
+    "schedule": [
+     "sequential"
+    ],
+    "pairs": [
+     [
+      "q30moe",
+      "q30moe"
+     ]
+    ],
+    "seeds": [
+     0
+    ]
+   },
+   {
+    "name": "simul",
+    "tasks": [
+     "factfind",
+     "puzzle",
+     "codefix"
+    ],
+    "modes": [
+     "collab",
+     "zerosum",
+     "poison",
+     "assist",
+     "sabotage"
+    ],
+    "backends": [
+     "scratchpad",
+     "kv",
+     "blackboard",
+     "kg",
+     "eventlog",
+     "tuplespace",
+     "datalog",
+     "crdt"
+    ],
+    "acl": [
+     "open"
+    ],
+    "schedule": [
+     "simultaneous"
+    ],
+    "pairs": [
+     [
+      "q30moe",
+      "q30moe"
+     ]
+    ],
+    "seeds": [
+     0
+    ]
+   },
+   {
+    "name": "mixed",
+    "tasks": [
+     "factfind",
+     "puzzle",
+     "codefix"
+    ],
+    "modes": [
+     "poison",
+     "zerosum",
+     "critic",
+     "assist",
+     "sabotage"
+    ],
+    "backends": [
+     "scratchpad",
+     "kv",
+     "blackboard",
+     "kg",
+     "eventlog",
+     "tuplespace",
+     "datalog",
+     "crdt"
+    ],
+    "acl": [
+     "open"
+    ],
+    "schedule": [
+     "sequential"
+    ],
+    "pairs": [
+     [
+      "q32",
+      "q8"
+     ],
+     [
+      "q8",
+      "q32"
+     ]
+    ],
+    "seeds": [
+     0
+    ]
+   }
+  ],
+  "gpu_sample_s": 2,
+  "verbose": 2,
+  "heartbeat_s": 60
+ },
+ "n_specs": 1062,
+ "started": "2026-11-11T05:32:12"
+}
