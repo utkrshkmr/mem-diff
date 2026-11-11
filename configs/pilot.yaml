@@ -20,6 +20,10 @@ models:
     top_p: 0.8
     top_k: 20
     max_tokens: 1536
+    active_params_b: 8.2
+    total_params_b: 8.2
+    layers: 36
+    attn_dim: 4096
   q30moe:
     hf: Qwen/Qwen3-30B-A3B-Instruct-2507
     served: q30moe
@@ -32,6 +36,10 @@ models:
     top_p: 0.8
     top_k: 20
     max_tokens: 1536
+    active_params_b: 3.3
+    total_params_b: 30.5
+    layers: 48
+    attn_dim: 4096
   q32:
     hf: Qwen/Qwen3-32B
     served: q32
@@ -44,6 +52,10 @@ models:
     top_p: 0.8
     top_k: 20
     max_tokens: 1536
+    active_params_b: 32.8
+    total_params_b: 32.8
+    layers: 64
+    attn_dim: 8192
 blocks:
 - name: core
   tasks: &id001
@@ -137,3 +149,4 @@ blocks:
     - q32
   seeds:
   - 0
+gpu_sample_s: 2

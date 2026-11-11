@@ -1,4 +1,5 @@
 import asyncio
+import csv
 import gzip
 import hashlib
 import itertools
@@ -65,6 +66,7 @@ async def main(cfg_path, limit=None):
     cfg = load(cfg_path)
     out = os.path.join(cfg.get("out", "results"), cfg["run"])
     os.makedirs(os.path.join(out, "traces"), exist_ok=True)
+    os.makedirs(os.path.join(out, "timelines"), exist_ok=True)
     epath = os.path.join(out, "episodes.jsonl")
     specs = expand(cfg)
     done = done_ids(epath)
@@ -87,7 +89,14 @@ async def main(cfg_path, limit=None):
             except Exception as e:
                 res, trace = {"id": spec["id"], **{k: spec[k] for k in ("task", "mode", "backend", "acl", "schedule", "seed")}, "model_A": spec["models"]["A"], "model_B": spec["models"].get("B"), "failed": f"crash {type(e).__name__}: {str(e)[:300]}"}, None
             res["block"] = spec["block"]
+            tl = res.pop("_timeline", None)
             async with lock:
+                if tl:
+                    cols = list(dict.fromkeys(k for r in tl for k in r))
+                    with gzip.open(os.path.join(out, "timelines", spec["id"] + ".csv.gz"), "wt", newline="") as g:
+                        w = csv.DictWriter(g, fieldnames=cols)
+                        w.writeheader()
+                        w.writerows(tl)
                 with open(epath, "a") as f:
                     f.write(json.dumps(res) + "\n")
                 if trace is not None and int(spec["id"], 16) % 1000 < sample * 1000:

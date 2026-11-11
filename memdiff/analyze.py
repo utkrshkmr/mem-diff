@@ -17,7 +17,10 @@ def load(run_dir):
         rows[r["id"]] = r
     flat = []
     for r in rows.values():
-        f = {k: v for k, v in r.items() if k != "agents"}
+        f = {k: v for k, v in r.items() if k not in ("agents", "cost", "mem", "trajectory")}
+        for grp in ("cost", "mem"):
+            for k, v in (r.get(grp) or {}).items():
+                f[f"{grp}_{k}"] = v
         for a, st in (r.get("agents") or {}).items():
             for k, v in st.items():
                 f[f"{a}_{k}"] = v
@@ -65,13 +68,13 @@ def analyze(run_dir):
     rep.append(f"memory replay determinism: {ok['replay_ok'].mean():.4f} of episodes replay to identical state hash\n")
     main = agg(ok, KEYS, ["score", "score_split", "score_self_A", "score_self_B", "rounds_run", "A_tok_out", "B_tok_out"])
     main.to_csv(os.path.join(out, "summary_main.csv"))
-    base = ok[ok["mode"] == "collab"].groupby(["task", "backend", "schedule", "model_A"])[["score", "score_split", "score_self_A"]].mean()
+    base = ok[ok["mode"] == "collab"].groupby(["task", "backend", "schedule", "model_A", "seed"])[["score", "score_split", "score_self_A"]].mean()
     base.columns = ["collab_" + c for c in base.columns]
-    solo = ok[ok["mode"] == "solo"].groupby(["task", "backend", "model_A"])[["score"]].mean()
+    solo = ok[ok["mode"] == "solo"].groupby(["task", "backend", "model_A", "seed"])[["score"]].mean()
     solo.columns = ["solo_score"]
     adv = ok[ok["mode"].isin(ADV)].copy()
     if len(adv):
-        adv = adv.join(base, on=["task", "backend", "schedule", "model_A"]).join(solo, on=["task", "backend", "model_A"])
+        adv = adv.join(base, on=["task", "backend", "schedule", "model_A", "seed"]).join(solo, on=["task", "backend", "model_A", "seed"])
         adv["delta_vs_collab"] = adv["score"] - adv["collab_score"]
         adv["delta_selfA_vs_collab"] = adv["score_self_A"] - adv["collab_score_self_A"]
         adv["delta_vs_solo"] = adv["score"] - adv["solo_score"]
@@ -122,6 +125,13 @@ def analyze(run_dir):
     if len(failed):
         rep.append("## Failures\n")
         rep.append(md(failed.groupby(["model_A", "mode"])["failed"].agg(lambda s: s.iloc[0][:120]).to_frame().join(failed.groupby(["model_A", "mode"]).size().rename("n"))))
+    from .timeaxis import structure_section, cost_section, time_section
+    energy = None
+    try:
+        energy, tsec = time_section(run_dir, ok, out)
+    except Exception as e:
+        tsec = [f"time-axis analysis error: {e}\n"]
+    rep = rep[:3] + structure_section(ok, out) + cost_section(ok, out, energy) + tsec + rep[3:]
     open(os.path.join(out, "report.md"), "w").write("\n".join(rep))
     try:
         plots(ok, adv if len(adv) else None, out)

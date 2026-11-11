@@ -19,12 +19,17 @@ finish() {
 }
 bash scripts/serve.sh "$CFG" || { echo "[pipeline] serving failed"; finish serve-failed; exit 1; }
 $PY -m memdiff.cli preflight "$CFG" || { echo "[pipeline] preflight failed"; finish preflight-failed; exit 1; }
+GS=$($PY -c "import yaml;print(yaml.safe_load(open('$CFG')).get('gpu_sample_s',2))")
+[ -f "$OUT/gpu.csv" ] || echo "unix,index,power_w,util_pct,mem_used_mib,sm_clock_mhz,temp_c" > "$OUT/gpu.csv"
+( while true; do T=$(date +%s.%N); nvidia-smi --query-gpu=index,power.draw,utilization.gpu,memory.used,clocks.sm,temperature.gpu --format=csv,noheader,nounits 2>/dev/null | sed "s/^/$T,/; s/ //g" >> "$OUT/gpu.csv"; sleep "$GS"; done ) &
+SAMPLER=$!
 ( while sleep "${MD_PUSH_EVERY:-1800}"; do bash scripts/push.sh "$RUN" progress; done ) &
 PUSHER=$!
 $PY -m memdiff.cli run "$CFG"
 RC=$?
 kill "$PUSHER" 2>/dev/null
 if [ "${MD_RETRY_FAILED:-1}" = 1 ]; then $PY -m memdiff.cli run "$CFG"; fi
+kill "$SAMPLER" 2>/dev/null
 $PY -m memdiff.cli analyze "$OUT"
 echo "[pipeline] done $(date -u) rc=$RC"
 finish final

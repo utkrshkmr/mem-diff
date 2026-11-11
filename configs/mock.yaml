@@ -10,6 +10,10 @@ trace_sample: 0.2
 models:
   m:
     type: mock
+    active_params_b: 8.2
+    total_params_b: 8.2
+    layers: 36
+    attn_dim: 4096
 blocks:
 - name: all
   tasks:

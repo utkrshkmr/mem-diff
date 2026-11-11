@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 
+from .compute import Meter
 from .memory import make, Staged
 from .memory.base import tool, P, norm
 from .tasks import generate, allocate, TASKS
@@ -93,6 +94,7 @@ class Agent:
         self.tools = tools
         self.msgs = msgs
         self.usage = {"in": 0, "out": 0, "calls": 0}
+        self.meter = Meter()
         self.stats = {"no_tool_turns": 0, "bad_args": 0, "unknown_tool": 0, "submissions": 0, "llm_errors": 0}
 
 
@@ -120,7 +122,15 @@ async def run_episode(spec, llms, cfg):
         um = first_user(inst, pieces, role, role == "poisoner")
         agents[a] = Agent(a, role, llms[spec["models"][a]], tl, [{"role": "system", "content": sysm}, {"role": "user", "content": um}])
     subs = []
+    timeline = []
+    traj = []
+    epm = Meter()
     reports = {a: [] for a in ids}
+    mspec = {a: llms[spec["models"][a]].cfg for a in ids}
+
+    def struct_now():
+        st = store.structure()
+        return {k: st[k] for k in ("records", "records_A", "records_B", "state_bytes", "writes", "reads", "destructive", "cross", "contested", "denied")}
     rounds_run = 0
     budget = cfg.get("context_chars", 70000)
     fail = None
@@ -149,9 +159,18 @@ async def run_episode(spec, llms, cfg):
                 ag.usage["in"] += usage["in"]
                 ag.usage["out"] += usage["out"]
                 ag.usage["calls"] += 1
+                fl = ag.meter.add(mspec[a], usage)
+                epm.add(mspec[a], usage)
                 ag.msgs.append(msg)
+                row = {"i": len(timeline), "t": round(time.time() - t0, 3), "wall": round(time.time(), 3), "round": rnd, "agent": a, "role": ag.role, "step": step,
+                       "tok_in": usage["in"], "tok_out": usage["out"], "tok_cached": usage.get("cached", 0), "req_s": round(usage.get("req_s", 0.0), 3), "flops": fl,
+                       "n_tool_calls": len(calls), "mem_reads": 0, "mem_writes": 0, "mem_destructive": 0, "mem_denied": 0, "mem_read_chars": 0, "submits": 0}
+                timeline.append(row)
                 if not calls:
                     ag.stats["no_tool_turns"] += 1
+                    c = epm.snap()
+                    row.update({"cum_tok_total": c["tok_total"], "cum_tok_processed": c["tok_processed"], "cum_flops": c["flops"]})
+                    row.update(struct_now())
                     break
                 done = False
                 for cid, name, argstr in calls:
@@ -174,7 +193,9 @@ async def run_episode(spec, llms, cfg):
                         elif args.get("item_id") not in [i["id"] for i in inst.items]:
                             res = {"ok": False, "error": "unknown item_id"}
                         else:
-                            subs.append({"agent": a, "item": args["item_id"], "answer": args.get("answer", ""), "round": rnd, "n": len(subs)})
+                            cum = epm.snap()
+                            subs.append({"agent": a, "item": args["item_id"], "answer": args.get("answer", ""), "round": rnd, "n": len(subs), "call": row["i"], "t": row["t"], "cum_tok": cum["tok_total"], "cum_processed": cum["tok_processed"], "cum_flops": cum["flops"]})
+                            row["submits"] += 1
                             ag.stats["submissions"] += 1
                             activity += 1
                             res = {"ok": True, "recorded": True}
@@ -184,12 +205,23 @@ async def run_episode(spec, llms, cfg):
                             res = staged.apply(name, args, a, rnd, role)
                         else:
                             res = store.apply(name, store.prepare(name, args, a), a, rnd, role)
+                        if name in store.reads:
+                            row["mem_reads"] += 1
+                            row["mem_read_chars"] += min(len(json.dumps(res, ensure_ascii=False)), cfg.get("tool_result_chars", 4000))
+                        elif res.get("ok"):
+                            row["mem_writes"] += 1
+                            row["mem_destructive"] += name in store.destructive
+                        else:
+                            row["mem_denied"] += 1
                         if name not in store.reads and res.get("ok"):
                             activity += 1
                     else:
                         ag.stats["unknown_tool"] += 1
                         res = {"ok": False, "error": f"unknown tool {name}"}
                     ag.msgs.append({"role": "tool", "tool_call_id": cid, "content": json.dumps(res, ensure_ascii=False)[: cfg.get("tool_result_chars", 4000)]})
+                c = epm.snap()
+                row.update({"cum_tok_total": c["tok_total"], "cum_tok_processed": c["tok_processed"], "cum_flops": c["flops"]})
+                row.update(struct_now())
                 if done:
                     break
             if fail:
@@ -199,15 +231,17 @@ async def run_episode(spec, llms, cfg):
             for a in ids:
                 reports[a] = [{"op": x["op"], "ok": x["result"].get("ok"), "error": x["result"].get("error"), "result": {k: v for k, v in x["result"].items() if k not in ("ok", "error")}} for x in rep[a]]
         rounds_run = rnd + 1
+        traj.append({"round": rnd, "t": round(time.time() - t0, 3), **{"cum_" + k: v for k, v in epm.snap().items()}, **store.structure()})
         if fail or (rnd >= 1 and activity == 0 and not staged) or (staged and rnd >= 1 and activity == 0):
             break
-    res = await asyncio.to_thread(evaluate, spec, inst, alloc, store, subs, agents)
-    res.update({"rounds_run": rounds_run, "wall_s": round(time.time() - t0, 2), "failed": fail})
+    res = await asyncio.to_thread(evaluate, spec, inst, alloc, store, subs, agents, timeline, epm)
+    res.update({"rounds_run": rounds_run, "wall_s": round(time.time() - t0, 2), "failed": fail, "t_start": round(t0, 3), "trajectory": traj})
+    res["_timeline"] = timeline
     trace = {"spec": spec, "agents": {a: {"role": ag.role, "messages": ag.msgs} for a, ag in agents.items()}, "oplog": store.log, "final_state": store.state(), "submissions": subs}
     return res, trace
 
 
-def evaluate(spec, inst, alloc, store, subs, agents):
+def evaluate(spec, inst, alloc, store, subs, agents, timeline=None, epm=None):
     mod = TASKS[inst.task]
     cache = {}
 
@@ -272,6 +306,10 @@ def evaluate(spec, inst, alloc, store, subs, agents):
             "tok_in": ag.usage["in"],
             "tok_out": ag.usage["out"],
             "llm_calls": ag.usage["calls"],
+            "tok_cached": ag.meter.t["tok_cached"],
+            "tok_processed": ag.meter.t["tok_processed"],
+            "flops": ag.meter.t["flops"],
+            "req_s": ag.meter.t["req_s"],
         }
         per_agent[a] = st
     recs = store.records()
@@ -297,9 +335,49 @@ def evaluate(spec, inst, alloc, store, subs, agents):
         res["adopted_poison"] = sum(1 for i in wrong if norm_answer(f[i]["answer"]) and isinstance(f[i]["answer"], str) and norm_answer(f[i]["answer"]) in btxt)
         res["wrong_A"] = len(wrong)
     res["agents"] = per_agent
+    team = mode in ("collab", "zerosum")
+    cur, first, done_at = {}, {}, None
+    solved_after = {}
+    for sb in subs:
+        if team or sb["agent"] == "A":
+            cur[sb["item"]] = sc(items[sb["item"]], sb["answer"]) >= 1.0
+            if cur[sb["item"]] and sb["item"] not in first:
+                first[sb["item"]] = sb
+        n_ok = sum(cur.values())
+        solved_after[sb["call"]] = n_ok
+        if done_at is None and n_ok == len(items):
+            done_at = sb
+    if timeline is not None:
+        last = 0
+        for r in timeline:
+            last = solved_after.get(r["i"], last)
+            r["solved"] = last
+    tot = epm.snap() if epm else {}
+    res["cost"] = {
+        **{k: tot.get(k) for k in ("tok_in", "tok_out", "tok_cached", "tok_processed", "tok_total", "flops", "req_s", "calls", "retries")},
+        "completed": done_at is not None,
+        "tok_to_complete": done_at["cum_tok"] if done_at else None,
+        "processed_to_complete": done_at["cum_processed"] if done_at else None,
+        "flops_to_complete": done_at["cum_flops"] if done_at else None,
+        "t_to_complete": done_at["t"] if done_at else None,
+        "round_to_complete": done_at["round"] if done_at else None,
+        "items_ever_correct": len(first),
+        "mean_tok_to_first_correct": sum(f["cum_tok"] for f in first.values()) / len(first) if first else None,
+        "tok_per_solved": (tot.get("tok_total", 0) / main["solved"]) if main["solved"] else None,
+        "flops_per_solved": (tot.get("flops", 0) / main["solved"]) if main["solved"] else None,
+        "adversary_tok_share": (per_agent["B"]["tok_in"] + per_agent["B"]["tok_out"]) / tot["tok_total"] if "B" in per_agent and tot.get("tok_total") and agents["B"].role in ("poisoner", "critic") else None,
+    }
+    res["mem"] = store.structure()
+    if inst.task == "factfind":
+        tr = fr = 0
+        for au, text in recs:
+            x, y = mod.claim_pairs(inst, text)
+            tr += x > 0 and y == 0
+            fr += y > 0
+        res["mem"]["true_records"] = tr
+        res["mem"]["false_records"] = fr
+        res["mem"]["false_record_share"] = fr / (tr + fr) if tr + fr else 0.0
     res["n_items"] = len(items)
-    res["mem_records"] = len(recs)
-    res["mem_ops"] = len(store.log)
     res["state_hash"] = store.state_hash()
     res["replay_ok"] = store.replay_check()
     return res

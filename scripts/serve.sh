@@ -13,7 +13,7 @@ $PY -m memdiff.cli models "$CFG" | while read -r NAME HF SERVED PORT UTIL MAXLEN
     echo "[serve] $NAME already up on $PORT"
     continue
   fi
-  ARGS="$HF --served-model-name $SERVED --gpu-memory-utilization $UTIL --max-model-len $MAXLEN --enable-auto-tool-choice --tool-call-parser hermes --enable-prefix-caching --max-num-seqs ${MD_MAX_SEQS:-128} $EXTRA ${MD_VLLM_EXTRA:-}"
+  ARGS="$HF --served-model-name $SERVED --gpu-memory-utilization $UTIL --max-model-len $MAXLEN --enable-auto-tool-choice --tool-call-parser hermes --enable-prefix-caching --enable-prompt-tokens-details --max-num-seqs ${MD_MAX_SEQS:-128} $EXTRA ${MD_VLLM_EXTRA:-}"
   echo "[serve] starting $NAME ($HF) on $PORT via $MODE"
   if [ "$MODE" = docker ]; then
     docker rm -f "md-$NAME" >/dev/null 2>&1

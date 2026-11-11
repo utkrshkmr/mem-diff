@@ -2,6 +2,7 @@ import asyncio
 import json
 import random
 import re
+import time
 import uuid
 
 from openai import AsyncOpenAI
@@ -19,6 +20,7 @@ class LLM:
         c = self.cfg
         extra = {"top_k": c.get("top_k", 20), "chat_template_kwargs": {"enable_thinking": bool(c.get("thinking", False))}}
         last = None
+        t0 = time.perf_counter()
         for attempt in range(6):
             try:
                 r = await self.client.chat.completions.create(
@@ -56,7 +58,9 @@ class LLM:
         if calls:
             msg["tool_calls"] = [{"id": i, "type": "function", "function": {"name": n, "arguments": a}} for i, n, a in calls]
         u = r.usage
-        usage = {"in": getattr(u, "prompt_tokens", 0) or 0, "out": getattr(u, "completion_tokens", 0) or 0}
+        det = getattr(u, "prompt_tokens_details", None)
+        cached = (getattr(det, "cached_tokens", 0) if det is not None else 0) or 0
+        usage = {"in": getattr(u, "prompt_tokens", 0) or 0, "out": getattr(u, "completion_tokens", 0) or 0, "cached": cached, "req_s": time.perf_counter() - t0, "retries": attempt}
         return msg, calls, usage
 
 
@@ -105,7 +109,8 @@ class MockLLM:
         out = [("call_" + uuid.uuid4().hex[:12], n, json.dumps(a)) for n, a in calls]
         msg = {"role": "assistant", "content": "", "tool_calls": [{"id": i, "type": "function", "function": {"name": n, "arguments": a}} for i, n, a in out]}
         await asyncio.sleep(0)
-        return msg, out, {"in": sum(len(str(m.get("content", ""))) for m in messages) // 4, "out": 20}
+        n_in = sum(len(str(m.get("content", ""))) + len(json.dumps(m.get("tool_calls", ""))) for m in messages) // 4
+        return msg, out, {"in": n_in, "out": 20, "cached": int(n_in * 0.8) if len(messages) > 3 else 0, "req_s": 0.01, "retries": 0}
 
 
 def make_llm(name, cfg):

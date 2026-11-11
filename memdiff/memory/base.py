@@ -41,6 +41,7 @@ class Memory:
     description = ""
     reads = ()
     writes = ()
+    destructive = ()
     max_text = 600
 
     def __init__(self, acl="open", schema=None, functional=None):
@@ -142,6 +143,33 @@ class Memory:
 
     def records(self):
         return []
+
+    def extra(self):
+        return {}
+
+    def structure(self):
+        recs = self.records()
+        by = {}
+        for a, _ in recs:
+            by[a] = by.get(a, 0) + 1
+        w = [e for e in self.log if e["kind"] == "write" and e["ok"]]
+        d = {
+            "records": len(recs),
+            "records_A": by.get("A", 0),
+            "records_B": by.get("B", 0),
+            "state_bytes": len(canon(self.state())),
+            "writes": len(w),
+            "reads": sum(e["kind"] == "read" for e in self.log),
+            "destructive": sum(e["op"] in self.destructive for e in w),
+            "cross": sum(bool(e["cross"]) for e in w),
+            "critiques": sum(e["op"] == "critique" for e in w),
+            "denied": sum(e["kind"] == "denied" for e in self.log),
+            "errors": sum(e["kind"] == "error" for e in self.log),
+            "contested": 0,
+        }
+        d["churn"] = d["destructive"] / d["writes"] if d["writes"] else 0.0
+        d.update(self.extra())
+        return d
 
     def fresh(self):
         m = type(self)(acl=self.acl, schema=self.schema, functional=self.functional)

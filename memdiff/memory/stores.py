@@ -8,6 +8,7 @@ class Scratchpad(Memory):
     description = "a shared free-text document made of numbered lines; anyone can append, edit or delete lines; authorship is not shown"
     reads = ("read_doc",)
     writes = ("append_line", "edit_line", "delete_line")
+    destructive = ("edit_line", "delete_line")
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -41,6 +42,7 @@ class Scratchpad(Memory):
         self.touch_other(l["author"], agent)
         l["text"] = self.clip(text)
         l["author"] = agent if self.acl == "open" else l["author"]
+        l["edits"] = l.get("edits", 0) + 1
         return {}
 
     def op_delete_line(self, agent, rnd, line_id):
@@ -56,6 +58,10 @@ class Scratchpad(Memory):
     def state(self):
         return {"seq": self.seq, "lines": self.lines}
 
+    def extra(self):
+        c = sum(1 for l in self.lines if l["text"].startswith("[CRITIQUE"))
+        return {"lines": len(self.lines), "lines_edited": sum(1 for l in self.lines if l.get("edits")), "contested": c}
+
     def records(self):
         return [(l["author"], l["text"]) for l in self.lines]
 
@@ -65,6 +71,7 @@ class KV(Memory):
     description = "a shared key-value store with versions; writes and deletes take an expected_version (compare-and-swap): -1 = any, 0 = key must not exist"
     reads = ("kv_get", "kv_list")
     writes = ("kv_put", "kv_delete")
+    destructive = ("kv_delete",)
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -123,6 +130,11 @@ class KV(Memory):
     def state(self):
         return {"seq": self.seq, "data": self.data}
 
+    def extra(self):
+        vs = [e["version"] for e in self.data.values()]
+        c = sum(1 for k in self.data if k.startswith("critique/"))
+        return {"keys": len(self.data), "mean_version": sum(vs) / len(vs) if vs else 0.0, "overwritten_keys": sum(v > 1 for v in vs), "contested": c}
+
     def records(self):
         return [(e["author"], f"{k} = {e['value']}") for k, e in sorted(self.data.items())]
 
@@ -132,6 +144,7 @@ class Blackboard(Memory):
     description = "a shared blackboard with sections (facts, hypotheses, plans, answers, critiques); entries have an author, a status (proposed/accepted/rejected) and endorsements"
     reads = ("bb_read",)
     writes = ("bb_post", "bb_set_status", "bb_endorse", "bb_edit", "bb_remove")
+    destructive = ("bb_set_status", "bb_edit", "bb_remove")
     sections = ("facts", "hypotheses", "plans", "answers", "critiques")
 
     def __init__(self, **kw):
@@ -212,6 +225,18 @@ class Blackboard(Memory):
     def state(self):
         return {"seq": self.seq, "entries": self.entries, "order": self.order}
 
+    def extra(self):
+        st = [e["status"] for e in self.entries.values()]
+        return {
+            "entries": len(st),
+            "accepted": st.count("accepted"),
+            "rejected": st.count("rejected"),
+            "proposed": st.count("proposed"),
+            "endorsed": sum(1 for e in self.entries.values() if e["endorsed_by"]),
+            "status_flips": sum(len(e["status_log"]) for e in self.entries.values()),
+            "contested": st.count("rejected") + sum(1 for e in self.entries.values() if e["section"] == "critiques"),
+        }
+
     def records(self):
         return [(self.entries[i]["author"], self.entries[i]["content"]) for i in self.order]
 
@@ -221,6 +246,7 @@ class TemporalKG(Memory):
     description = "a shared temporal knowledge graph of (subject, relation, object) facts; facts are never deleted, only retracted (closed in time); repeated assertions by different agents are recorded as corroboration; disputes are attached to facts"
     reads = ("kg_query", "kg_neighbors")
     writes = ("kg_add", "kg_retract")
+    destructive = ("kg_retract",)
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -244,7 +270,7 @@ class TemporalKG(Memory):
         v = {"id": i, "subject": e["s"], "relation": e["r"], "object": e["o"], "asserted_by": e["by"], "retracted": e["to"] is not None, "disputes": e["disputes"]}
         if e["to"] is not None:
             v["retraction"] = e["retraction"]
-        if e["r"] in self.functional and e["to"] is None:
+        if norm(e["r"]) in {norm(x) for x in self.functional} and e["to"] is None:
             others = [j for j, f in self.edges.items() if f["to"] is None and norm(f["s"]) == norm(e["s"]) and norm(f["r"]) == norm(e["r"]) and j != i]
             if others:
                 v["conflicts_with"] = others
@@ -297,6 +323,37 @@ class TemporalKG(Memory):
 
     def state(self):
         return {"seq": self.seq, "edges": self.edges, "notes": self.notes}
+
+    def extra(self):
+        act = {i: e for i, e in self.edges.items() if e["to"] is None}
+        nodes = {norm(e["s"]) for e in act.values()} | {norm(e["o"]) for e in act.values()}
+        par = {n: n for n in nodes}
+
+        def f(x):
+            while par[x] != x:
+                par[x] = par[par[x]]
+                x = par[x]
+            return x
+
+        for e in act.values():
+            par[f(norm(e["s"]))] = f(norm(e["o"]))
+        groups = {}
+        for e in act.values():
+            if norm(e["r"]) in {norm(x) for x in self.functional}:
+                groups.setdefault((norm(e["s"]), norm(e["r"])), set()).add(norm(e["o"]))
+        disputed = sum(1 for e in self.edges.values() if e["disputes"])
+        retracted = len(self.edges) - len(act)
+        return {
+            "edges_active": len(act),
+            "edges_retracted": retracted,
+            "edges_disputed": disputed,
+            "edges_corroborated": sum(1 for e in act.values() if len(e["by"]) > 1),
+            "nodes": len(nodes),
+            "components": len({f(n) for n in nodes}),
+            "functional_conflicts": sum(1 for v in groups.values() if len(v) > 1),
+            "flags": len(self.notes),
+            "contested": disputed + retracted,
+        }
 
     def records(self):
         out = [(e["author"], f"{e['s']} {e['r']} {e['o']}") for e in self.edges.values() if e["to"] is None]
@@ -366,6 +423,11 @@ class EventLog(Memory):
     def state(self):
         return {"seq": self.seq, "events": self.events}
 
+    def extra(self):
+        v = self.view()
+        st = [c["status"] for c in v]
+        return {"events": len(self.events), "claims": len(v), "claims_active": st.count("active"), "claims_retracted": st.count("retracted"), "claims_contested": st.count("contested"), "contested": st.count("contested")}
+
     def records(self):
         return [(e["author"], e["text"]) for e in self.events if e["type"] != "retract"]
 
@@ -375,6 +437,7 @@ class TupleSpace(Memory):
     description = "a Linda-style shared tuple space; tuples are lists of strings; rd reads matching tuples, take removes and returns the first match; '*' is a wildcard"
     reads = ("ts_rd", "ts_count")
     writes = ("ts_out", "ts_take")
+    destructive = ("ts_take",)
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -439,6 +502,9 @@ class TupleSpace(Memory):
     def state(self):
         return {"seq": self.seq, "tuples": self.tuples}
 
+    def extra(self):
+        return {"tuples": len(self.tuples), "tuple_kinds": len({norm(t["fields"][0]) for t in self.tuples}), "contested": sum(1 for t in self.tuples if norm(t["fields"][0]) == "critique")}
+
     def records(self):
         return [(t["author"], " ".join(t["fields"])) for t in self.tuples]
 
@@ -492,6 +558,7 @@ class Datalog(Memory):
     description = "a shared Datalog fact base; agents assert ground facts pred(a,b,...) and may add rules head :- body; queries return facts derived to fixpoint; variables start with ?"
     reads = ("dl_query", "dl_list")
     writes = ("dl_assert", "dl_retract", "dl_add_rule", "dl_remove_rule")
+    destructive = ("dl_retract", "dl_remove_rule")
     max_derived = 4000
 
     def __init__(self, **kw):
@@ -625,6 +692,10 @@ class Datalog(Memory):
         c = super().snapshot()
         return c
 
+    def extra(self):
+        d = self.derive()
+        return {"base_facts": len(self.facts), "rules": len(self.rules), "derived_facts": len(d) - len(self.facts), "predicates": len({norm(f["pred"]) for f in self.facts.values()}), "contested": sum(1 for f in self.facts.values() if norm(f["pred"]) == "critique")}
+
     def records(self):
         return [(f["author"], f"{f['args'][0] if f['args'] else ''} {f['pred']} {' '.join(f['args'][1:])}") for f in self.facts.values()]
 
@@ -634,6 +705,7 @@ class CRDT(Memory):
     description = "a shared CRDT: an observed-remove set of text items plus last-writer-wins registers; concurrent add and remove of the same item keeps the item"
     reads = ("crdt_read",)
     writes = ("crdt_add", "crdt_remove", "crdt_set")
+    destructive = ("crdt_remove",)
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -699,6 +771,10 @@ class CRDT(Memory):
 
     def state(self):
         return {"seq": self.seq, "adds": self.adds, "tomb": sorted(self.tomb), "regs": self.regs}
+
+    def extra(self):
+        live = self.live()
+        return {"set_live": len(live), "set_tombstoned": len(self.tomb), "registers": len(self.regs), "contested": sum(1 for a in live.values() if a["item"].startswith("[CRITIQUE"))}
 
     def records(self):
         out = [(a["author"], a["item"]) for a in self.live().values()]
